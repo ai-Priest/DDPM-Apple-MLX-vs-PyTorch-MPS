@@ -1,0 +1,10 @@
+# PyTorch MPS DDPM — dependencies for src/ddpm_pytorch.py
+# mlx is intentionally excluded: this script uses PyTorch MPS, not MLX.
+
+torch>=2.1.0          # MPS backend; current_allocated_memory() requires >= 2.0
+torchvision>=0.16.0   # CIFAR-10 dataset and transforms
+numpy>=1.24.0
+Pillow>=9.5.0
+tqdm>=4.65.0
+matplotlib>=3.7.0
+pytorch-fid>=0.3.0

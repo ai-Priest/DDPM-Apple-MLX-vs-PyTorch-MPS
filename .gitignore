@@ -1,0 +1,22 @@
+# ── Environment / secrets ────────────────────────────────────────────────────
+.env
+.env.pytorch
+
+# ── Internal Claude Code briefs and Notion exports (not for public repo) ─────
+for_Claude/
+
+# ── Generated outputs (large, machine-specific) ──────────────────────────────
+samples/
+benchmark_results/
+data/
+checkpoints/
+
+# ── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+*.egg-info/
+
+# ── macOS ────────────────────────────────────────────────────────────────────
+.DS_Store
