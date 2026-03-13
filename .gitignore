@@ -2,8 +2,6 @@
 .env
 .env.pytorch
 
-# ── Internal Claude Code briefs and Notion exports (not for public repo) ─────
-for_Claude/
 
 # ── Generated outputs (large, machine-specific) ──────────────────────────────
 samples/
