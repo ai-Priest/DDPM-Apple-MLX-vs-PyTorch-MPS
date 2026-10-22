@@ -2,15 +2,15 @@
 
 A Denoising Diffusion Probabilistic Model (DDPM) trained from scratch on CIFAR-10, implemented in **Apple MLX** with a **PyTorch MPS port** for head-to-head benchmarking across Apple Silicon chip generations.
 
-The model learns to generate 32×32 colour images by reversing a learned noise process — the same mathematical foundation behind Stable Diffusion, Imagen, and Apple's on-device generative features including **Clean Up** and **Photonic Engine** enhancements.
+The model learns to generate 32×32 colour images by reversing a gradual noising process — the same family of models as Stable Diffusion and Imagen.
 
 ---
 
-## Why This Matters for Apple
+## Why MLX on Apple Silicon
 
-Apple's on-device generative AI pipeline — from the Photonic Engine's computational photography to Clean Up's inpainting — is built on diffusion model principles. This project demonstrates ownership of that full pipeline: the noise schedule math, the U-Net architecture, the training loop mechanics, and the framework-level performance characteristics of MLX on Apple Silicon.
+This project builds the full DDPM pipeline by hand: the noise schedule, the U-Net, the training loop and the samplers. It then measures how two frameworks run that same model on Apple Silicon.
 
-MLX is the framework Apple's own research team uses for on-device model development. Understanding *why* MLX is fast — NHWC memory layout matching Metal's convolution format, lazy evaluation enabling operation fusion before Metal dispatch — is directly transferable to optimising production models for Apple hardware.
+MLX is Apple's open-source array framework for machine learning on Apple Silicon, released by Apple machine learning research. It uses unified memory, lazy evaluation (operations build a graph that runs when a result is needed) and channels-last (NHWC) convolutions. Whether those design choices make it faster depends on the hardware: in the results below MLX wins on M1 Max and loses on M4.
 
 ---
 
@@ -48,20 +48,22 @@ Full 2×2 matrix across both frameworks and both machines:
 | **Mac Studio M1 Max** (32-core GPU) | **118.72s / epoch** | 150.03s / epoch | MLX +26% faster |
 | **Mac Mini M4** (10-core GPU) | 264.62s / epoch | **230.24s / epoch** | PyTorch +15% faster |
 
-**The framework winner depends on the chip generation.** MLX is faster on M1 Max; PyTorch MPS is faster on M4. MLX's Metal kernels appear better optimised for M1/M2/M3-era GPU microarchitecture, while PyTorch's MPS backend has an edge on the newer M4.
+**The framework winner flips between the two machines.** MLX is faster on M1 Max; PyTorch MPS is faster on M4. The two machines differ in both chip generation and GPU size (32 cores vs 10), so this benchmark cannot separate the two effects. M2 and M3 were not tested.
 
-All four runs converged to the same final loss (~0.0315), confirming the two implementations are numerically equivalent.
+All four runs converged to the same final loss (~0.0315), which is consistent with the two implementations being equivalent.
 
 ### Sampling Speed (M1 Max · MLX)
 
 | Metric | MLX |
 |---|---|
-| **Training** (avg/epoch) | 119.93s |
+| **Training** (avg/epoch) | 119.93s¹ |
 | **DDPM sampling** (1000 steps, 16 imgs) | **13.87s** ± 0.02s |
 | **DDIM sampling** (50 steps, 16 imgs) | **1.23s** |
 | **DDIM speedup** | **19.8×** |
 | **Steps/sec** (DDPM) | 72.1 |
 | **Time/image** (DDPM) | 0.87s |
+
+¹ Training averages vary slightly between MLX runs on the M1 Max (118.72s in the matrix above, 119.93s here). The matrix figure is the one used for the framework comparison.
 
 ### Loss Convergence (MLX · M1 Max)
 
@@ -71,7 +73,7 @@ All four runs converged to the same final loss (~0.0315), confirming the two imp
 
 **FID Score (MLX · M1 Max · 1,000 generated images): 94.64**
 
-Ho et al. report FID ~3.17 at 300,000 gradient steps with a larger model. This 50-epoch run (~19,500 steps) is a proof-of-concept — the infrastructure to train, sample, and *measure* generation quality end-to-end is what this demonstrates. FID trending downward with more training is expected and confirmed by the loss curve.
+Ho et al. report FID 3.17 on CIFAR-10 with a 35.7M-parameter model trained for 800k steps, scored on 50,000 samples. This 50-epoch run (~19,500 steps) is a proof of concept: it shows the pipeline can train, sample and *measure* generation quality end to end. The two FIDs are not directly comparable, because FID computed on 1,000 images reads higher than on 50,000. Only one FID was measured here, so no trend over training is claimed; longer training would be expected to lower it, but that has not been tested.
 
 ### Generated Samples
 
@@ -90,8 +92,8 @@ Ho et al. report FID ~3.17 at 300,000 gradient steps with a larger model. This 5
 Apple Silicon Mac (M1 or later), macOS 13+, conda or venv.
 
 ```bash
-git clone https://github.com/ai-Priest/mvp2-ddpm-cifar10.git
-cd mvp2-ddpm-cifar10
+git clone https://github.com/ai-Priest/ddpm-apple-mlx-vs-pytorch-mps.git
+cd ddpm-apple-mlx-vs-pytorch-mps
 
 # MLX run
 pip install -r requirements.txt
@@ -109,7 +111,7 @@ cp .env.example .env
 Edit `.env` and set `BASE_DIR` to your project root:
 
 ```
-BASE_DIR=/path/to/your/mvp2-ddpm-cifar10
+BASE_DIR=/path/to/your/ddpm-apple-mlx-vs-pytorch-mps
 ```
 
 CIFAR-10 (~170 MB) downloads automatically to `data/` on first run.
@@ -131,8 +133,8 @@ Checkpoints save to `checkpoints/` every 10 epochs and on every new best loss.
 
 ### Fast sampling with DDIM
 
-By default, sampling uses DDPM's 1,000-step reverse process. For ~20× faster generation
-with equivalent quality, use the DDIM sampler:
+By default, sampling uses DDPM's 1,000-step reverse process. For ~20× faster generation,
+use the DDIM sampler (its sample quality has not been measured by FID here):
 
 ```bash
 python src/ddpm_mlx.py --sampler ddim --ddim_steps 50
